@@ -30,12 +30,10 @@
       (status 400)))
 
 (defn- invalid-format [format]
-  (let [msg (str "'" format "' is not a valid format: 'rss' or 'json'.")]
-    (error-response msg)))
+  (error-response "Invalid Format"))
 
 (defn- invalid-url [url]
-  (let [msg (str "'" url "' is not a valid URL of Steam search results pages.")]
-    (error-response msg)))
+  (error-response "Invalid URL"))
 
 (defroutes app-routes
   (GET "/" [url format :as r]
@@ -45,7 +43,8 @@
              (nil "rss") (serve-rss url ch-url)
              "json"      (serve-json url ch-url)
              (invalid-format format)))
-         (invalid-url url))))
+         (invalid-url url)))
+  (route/not-found "Not Found"))
 
 (def app
   (handler/api app-routes))
