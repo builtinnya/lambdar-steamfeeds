@@ -1,6 +1,6 @@
 # lambdar-steamfeeds
 
-A feed generation service for [Steam® store][1] search results.
+An unofficial feed generation service for [Steam® store][1] search results.
 
 [1]: http://store.steampowered.com
 
