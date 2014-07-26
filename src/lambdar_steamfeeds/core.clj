@@ -8,10 +8,12 @@
 
 (ns lambdar-steamfeeds.core
   (:require [clojure.string :refer [trim]]
+            [clojure.core.cache :as cache]
             [net.cgrand.enlive-html :as html]
             [net.cgrand.jsoup]
             [hiccup.core :refer :all]
             [clj-rss.core :as rss]
+            [url-normalizer.core :as url]
             [cheshire.core :as json]))
 
 (defn- parse-page [url]
@@ -89,16 +91,27 @@
   [url]
   (and url (.startsWith url "http://store.steampowered.com/search")))
 
+(def ^:private feed-cache (atom (cache/ttl-cache-factory {} :ttl 300000)))
+
+(defn- canonicalize-url [url]
+  (str (url/normalize url {:sort-query-keys? true})))
+
 (defn generate-feed
   "Takes the URL of a Steam search results page and returns the feed as map.
   With an additional argument, it is used as the channel URL."
   ([src-url]
      (generate-feed src-url nil))
   ([src-url ch-url]
-     (let [node  (parse-page src-url)
-           title (channel-title node)
-           items (map (comp item->rss-ready node->item) (search-results node))]
-       {:title title :link ch-url :description title :items items})))
+     (let [src-url (canonicalize-url src-url)]
+       (if-let [cached (cache/lookup @feed-cache src-url)]
+         cached
+         (let [node  (parse-page src-url)
+               title (channel-title node)
+               items (map (comp item->rss-ready node->item)
+                          (search-results node))
+               feed {:title title :link ch-url :description title :items items}]
+           (swap! feed-cache cache/miss src-url feed)
+           feed)))))
 
 (defn generate-rss
   "Takes the URL of a Steam search results page and returns the RSS feed.
